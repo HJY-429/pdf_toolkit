@@ -1,0 +1,12 @@
+# Cloudflare Pages 项目配置
+# ─────────────────────────────────────────────
+# 用法（部署前务必先执行：npm run build，生成 dist/）：
+#   本地预览：  npx wrangler pages dev dist
+#   正式部署：  npx wrangler pages deploy dist
+#
+# 首次部署会提示登录 Cloudflare 账号（wrangler login）。
+# 也可不写本文件，直接 `npx wrangler pages deploy dist`（名称会交互询问）。
+
+name = "pdf-toolkit"
+# Pages 构建产物目录（必须与 vite.config.ts 的 outDir 一致）
+pages_build_output_dir = "dist"

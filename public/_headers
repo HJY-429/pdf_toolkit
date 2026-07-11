@@ -1,0 +1,8 @@
+# Cloudflare Pages 自定义响应头
+# 带哈希的静态资源（JS/CSS/字体）长期缓存，提升二次访问速度
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Service Worker 不缓存，保证更新及时生效
+/sw.js
+  Cache-Control: no-cache

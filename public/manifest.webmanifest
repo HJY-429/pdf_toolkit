@@ -1,0 +1,18 @@
+{
+  "name": "PDF 工具箱",
+  "short_name": "PDF 工具箱",
+  "description": "纯前端 PDF 处理：合并、拆分、压缩、加密、水印、图片/文本互转等",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
