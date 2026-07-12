@@ -12,7 +12,6 @@ import './pdf-to-image';
 import './pdf-to-text';
 import './word-to-pdf';
 import './excel-to-pdf';
-import './pdf-to-excel';
 import './pdf-to-word';
 import './html-to-pdf';
 

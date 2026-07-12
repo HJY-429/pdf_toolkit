@@ -99,7 +99,7 @@ function renderHome() {
   view.appendChild(
     el('section', { class: 'hero' }, [
       el('h1', {}, ['本地处理所有 PDF，文件永不离开你的浏览器']),
-      el('p', {}, ['16 个工具，覆盖合并、拆分、转换、加密、压缩。纯前端运行，隐私零风险。']),
+      el('p', {}, ['15 个工具，覆盖合并、拆分、转换、加密、压缩。纯前端运行，隐私零风险。']),
     ]),
   );
 
@@ -504,7 +504,12 @@ function showResult(output: ToolOutput) {
     const url = URL.createObjectURL(f.blob);
     state.resultUrls.push(url);
     const a = el('a', { class: 'dl', href: url, download: f.name }, [`下载 ${f.name}`]);
-    box.appendChild(el('div', { class: 'item' }, [el('span', { class: 'fname' }, [`文件 ${i + 1} · ${f.name}`]), a]));
+    box.appendChild(
+      el('div', { class: 'item' }, [
+        el('span', { class: 'fname' }, [`文件 ${i + 1} · ${f.name} · ${formatSize(f.blob.size)}`]),
+        a,
+      ]),
+    );
   });
   if (output.length > 1) {
     const useZip = output.length > ZIP_THRESHOLD;
