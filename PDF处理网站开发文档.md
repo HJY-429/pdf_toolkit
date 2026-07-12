@@ -479,3 +479,20 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 - **关键教训**：Dashboard 创建时必须选 **Pages**（⚡）而非 Worker（`<>`）。误建 Worker 项目会报 `Missing entry-point`、显示 `No active routes`、永无 `.pages.dev` 地址——这正是前序排错全程卡住的根因。删除 Worker 项目、重建纯 Pages 项目后一切正常。
 - **已验证**：`npm run build` 通过；项目可用；pdf.js 路径加固（模块地址解析）已生效。
 - **待用户验证（本次未实测）**：`git push` 后是否自动重新部署并更新线上（预期可行，因已连 GitHub + 构建设置正确）。
+
+### 11.9 线上测试发现的 Bug 与修复（2026-07-12）
+
+上线后用户真机点测发现 8 类问题，已定位并修复（代码已改、`npm run build` 通过）：
+
+1. **PDF 旋转全失败**（报错 `Invalid rotation: 0/90/180/270`）：`rotate.ts` 的 `setRotation(angle)` 传裸数字，pdf-lib 只接受 `Rotation` 对象 → 改为 `setRotation(degrees(angle))`。（教训：之前 Node 自测用了 `degrees` 而漏掉此回归。）
+2. **PDF 转图片 多文件失败**：`pdf-to-image` 是 `multiple+workerSafe`，但 Worker 运行器漏 import 它 → 回退主线程只收到多文件数组、`run` 仅处理 `files[0]` → 异常。已补 import。
+3. **PDF 压缩 多文件失败**：`compress.ts` 用 `fetch(canvas.toDataURL())` 取字节，data: URL fetch 在部分环境被拒 → 改为 `canvas.toBlob` 直接取字节。
+4. **PDF 加密无力**：`ownerPassword` 留空传 `undefined`，部分阅读器不弹密码 → 留空时默认 `= userPassword`。
+5. **UI 错误不透明**：批量失败只显示"N 个文件失败且无输出"无原因 → 改为显示首个失败原因，便于定位。
+
+> **待确认（沙箱无浏览器）**：压缩/转图/提取文本共用 `loadPdf`(pdf.js)、Word/Excel/HTML 转 PDF 共用 `html2canvas`。若修复后**单文件**仍失败，根因在底层库 Pages 运行时，需用户 F12 控制台红色报错定位。修复需重新部署（push 或 `wrangler pages deploy dist`）才能生效。
+
+### 11.10 下一步优化（规划中，未启动）
+
+- **批量结果打包下载**：当输出文件数超过阈值（如 6 项），自动打包为 ZIP / 提供"下载全部"的压缩包形式，避免逐一下载（尤其 PDF 拆分整本书时产生几十个文件）。
+- 高保真转换（LibreOffice headless / 商业 API）、OCR、中文水印字体嵌入（M5 候选）。

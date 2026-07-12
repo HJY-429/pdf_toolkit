@@ -9,6 +9,9 @@ import '../tools/decrypt';
 import '../tools/watermark';
 import '../tools/pagenumber';
 import '../tools/image-to-pdf';
+import '../tools/pdf-to-image';
+import '../tools/compress';
+import '../tools/pdf-to-text';
 import { registry } from '../core/registry';
 
 type RunMsg = {

@@ -37,8 +37,10 @@ const compressPdf: Tool = {
       const page = await src.getPage(i);
       const vp = page.getViewport({ scale: 1 });
       const { canvas } = await renderPage(src, i, scale);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      const jpgBytes = new Uint8Array(await (await fetch(dataUrl)).arrayBuffer());
+      const jpgBlob = await new Promise<Blob>((res, rej) =>
+        canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob 失败'))), 'image/jpeg', 0.8),
+      );
+      const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
       const img = await out.embedJpg(jpgBytes);
       const p = out.addPage([vp.width, vp.height]);
       p.drawImage(img, { x: 0, y: 0, width: vp.width, height: vp.height });

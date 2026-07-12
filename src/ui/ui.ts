@@ -435,6 +435,7 @@ async function runTool() {
       );
       allResults.push(...output);
     } else {
+      const errors: string[] = [];
       for (let i = 0; i < total; i++) {
         try {
           const output = await executeTool(
@@ -449,6 +450,7 @@ async function runTool() {
           allResults.push(...output);
         } catch (e: any) {
           failed++;
+          errors.push(`${state.files[i].name}：${e?.message || e}`);
           console.error(`文件 ${state.files[i].name} 处理失败`, e);
         }
       }
@@ -457,7 +459,11 @@ async function runTool() {
     setProgress(1, '完成');
     showResult(allResults);
     if (allResults.length === 0) {
-      setStatus(failed > 0 ? `处理完成，但 ${failed} 个文件失败且无输出` : '处理完成，但没有生成任何文件', 'err');
+      const reason = errors[0] ? `（首个失败原因：${errors[0]}）` : '';
+      setStatus(
+        failed > 0 ? `处理完成，但 ${failed} 个文件失败且无输出${reason}` : '处理完成，但没有生成任何文件',
+        'err',
+      );
     } else {
       const extra = failed > 0 ? `（${failed} 个文件处理失败已跳过）` : '';
       setStatus(`处理完成，共 ${allResults.length} 个输出文件${extra}`, failed > 0 ? 'err' : 'ok');

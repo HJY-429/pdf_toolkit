@@ -18,7 +18,8 @@ const encryptPdf: Tool = {
   async run({ files, options }: ToolInput): Promise<ToolOutput> {
     const user = String(options.userPassword || '');
     if (!user) throw new Error('请填写打开密码');
-    const owner = String(options.ownerPassword || '') || undefined;
+    // 未填权限密码时，默认与打开密码相同，确保多数阅读器强制要求密码
+    const owner = options.ownerPassword ? String(options.ownerPassword) : user;
     const bytes = await files[0].arrayBuffer();
     const doc = await PDFDocument.load(bytes);
     const saved = await doc.save({ userPassword: user, ownerPassword: owner });

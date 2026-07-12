@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib';
 import type { Tool, ToolInput, ToolOutput } from '../core/types';
 import { registry } from '../core/registry';
 import { deriveName } from '../core/io';
@@ -28,7 +28,7 @@ const rotatePdf: Tool = {
     const angle = Number(options.angle ?? 90);
     const bytes = await files[0].arrayBuffer();
     const doc = await PDFDocument.load(bytes);
-    doc.getPages().forEach((p) => p.setRotation(angle));
+    doc.getPages().forEach((p) => p.setRotation(degrees(angle)));
     const name = deriveName(files[0].name, `rotated-${angle}`);
     return [{ blob: new Blob([await doc.save()], { type: 'application/pdf' }), name }];
   },
