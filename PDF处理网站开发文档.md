@@ -348,6 +348,7 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 | M3 | Word/Excel→PDF 基础版、PDF→Word 文本级、HTML→PDF 栅格化 | ✅ 已完成（2026-07-11） |
 | M4 | UI 打磨（拖拽排序、缩略图预览、批量）、PWA 离线、Web Worker 分块、UI 重构（分类卡片网格 + 深浅主题切换） | ✅ 已完成（2026-07-11） |
 | M5 | 可选高保真：Worker/Containers + 商业 API、OCR | ⏳ 待定 |
+| M6 | 部署上线 Cloudflare Pages（删旧 Worker 项目、重建纯 Pages 项目 pdf-toolkit、连 GitHub 自动部署 pdf-toolkit-hhh.pages.dev） | ✅ 已完成（2026-07-12） |
 
 ---
 
@@ -454,7 +455,7 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 
 > 说明：因沙箱无法启动 Chrome，本次 UI 仅经 `vite build` 通过 + 代码审查验证，未做真机浏览器交互测试；上线前建议本地 `npm run dev` 实际点一遍。
 
-### 11.7 部署准备（2026-07-11）
+### 11.7 部署准备与上线（2026-07-11–07-12）
 
 目标：把纯前端产物托管到 **Cloudflare Pages**（零后端、自带 CDN/HTTPS）。沙箱无 wrangler、无账号凭据，故本步只完成**配置 + 手册 + 代码加固**，最后「登录账号并推送」由用户本人执行。
 
@@ -469,4 +470,12 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 
 构建验证：`npm run build` 通过；产物确认 `new URL("pdf.worker...", import.meta.url)` 与 `serviceWorker.register("./sw.js")` 均已正确生成；`dist/_headers` 存在；主包 `index-*.js` 25.8KB（gzip 10.45KB）。
 
-待用户执行：① `npm install -g wrangler` → `wrangler login` → `npm run build && wrangler pages deploy dist`；或 ② 推 Git 后在 Dashboard 连仓库部署（构建命令 `npm run build`、输出 `dist`、环境变量 `NODE_VERSION=22`）。
+**上线结果（2026-07-12）**：删除了误建的 Worker 型 `pdf-toolkit` 项目，从零重建**纯 Pages** 项目 `pdf-toolkit`（Framework preset=`None`、Build=`npm run build`、输出=`dist`、NODE_VERSION=22），并连接 GitHub 仓库实现 `git push` 自动部署。线上地址：**https://pdf-toolkit-hhh.pages.dev**。后续代码更新只需 `git push` 即自动重新构建发布。
+
+### 11.8 已上线总结与后续
+
+- **线上地址**：https://pdf-toolkit-hhh.pages.dev（纯 Pages 类型，闪电 ⚡ 图标）。
+- **部署方式**：Cloudflare Pages + GitHub 集成，`git push` 即自动构建发布；构建命令 `npm run build`、产物 `dist`、环境变量 `NODE_VERSION=22`、框架预设 `None`。
+- **关键教训**：Dashboard 创建时必须选 **Pages**（⚡）而非 Worker（`<>`）。误建 Worker 项目会报 `Missing entry-point`、显示 `No active routes`、永无 `.pages.dev` 地址——这正是前序排错全程卡住的根因。删除 Worker 项目、重建纯 Pages 项目后一切正常。
+- **已验证**：`npm run build` 通过；项目可用；pdf.js 路径加固（模块地址解析）已生效。
+- **待用户验证（本次未实测）**：`git push` 后是否自动重新部署并更新线上（预期可行，因已连 GitHub + 构建设置正确）。
