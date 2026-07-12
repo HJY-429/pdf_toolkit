@@ -447,10 +447,8 @@ async function runTool() {
             t,
             [state.files[i]],
             options,
-            {
-              onProgress: (r, label) =>
-                setProgress((i + r) / total, `处理 ${i + 1}/${total}：${label || Math.round(r * 100) + '%'}`),
-            },
+            (r, label) =>
+              setProgress((i + r) / total, `处理 ${i + 1}/${total}：${label || Math.round(r * 100) + '%'}`),
           );
           allResults.push(...output);
         } catch (e: any) {
