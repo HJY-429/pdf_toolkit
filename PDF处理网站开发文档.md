@@ -399,7 +399,7 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 - `src/core/registry.ts`：注册表，UI 只依赖它与统一接口。
 - `src/core/io.ts`：单/多文件下载、文件名推导。
 - `src/core/pdfjs.ts`：PDF.js 封装（worker 经 Vite `?url` 引入），含 `loadPdf/renderPage/extractText`。
-- `src/ui/ui.ts`：通用「首页分类卡片网格 → 选择工具 → 上传 → 参数 → 处理 → 下载」流程；首页按 `tool-meta.ts` 的分类（合并与拆分/页面编辑/格式转换/安全加密/优化压缩）分组展示 15 个工具图标卡片；自动按 `fields` 渲染表单；多文件显示排序/删除；进度条；结果逐个下载或「全部下载」；支持深浅主题切换（localStorage 记忆）。
+- `src/ui/ui.ts`：通用「首页分类卡片网格 → 选择工具 → 上传 → 参数 → 处理 → 下载」流程；首页按 `tool-meta.ts` 的分类（合并与拆分/页面编辑/格式转换/安全加密/优化压缩）分组展示 15 个工具图标卡片；自动按 `fields` 渲染表单；多文件显示排序/删除；进度条；结果逐个下载或「全部下载」（>6 个文件自动打包 ZIP），并显示每个输出文件的大小；支持深浅主题切换（localStorage 记忆）。
 - `src/tools/*`：每个功能一个文件，`import` 进 `src/tools/index.ts` 即自动注册。
 
 ### 11.3 已知限制（待 M4/M5 解决）
@@ -492,7 +492,17 @@ npx wrangler pages deploy dist   # 部署到 Cloudflare Pages
 
 > **待确认（沙箱无浏览器）**：压缩/转图/提取文本共用 `loadPdf`(pdf.js)、Word/Excel/HTML 转 PDF 共用 `html2canvas`。若修复后**单文件**仍失败，根因在底层库 Pages 运行时，需用户 F12 控制台红色报错定位。修复需重新部署（push 或 `wrangler pages deploy dist`）才能生效。
 
-### 11.10 下一步优化（规划中，未启动）
+### 11.10 优化与迭代（2026-07-12 第三轮）
 
-- **批量结果打包下载**：当输出文件数超过阈值（如 6 项），自动打包为 ZIP / 提供"下载全部"的压缩包形式，避免逐一下载（尤其 PDF 拆分整本书时产生几十个文件）。
-- 高保真转换（LibreOffice headless / 商业 API）、OCR、中文水印字体嵌入（M5 候选）。
+**已完成：**
+- **水印不透明度默认值**：默认由无效值 `'0.2'`（下拉选项里没有，解析为空→不透明度 0→"看不见水印"）改为有效 `'0.25'`，并加 `Number()||0.25` 兜底。
+- **批量结果打包下载（§11.10 原规划项）**：输出文件数 > 阈值（`ZIP_THRESHOLD=6`）时，改用 `fflate` 打包为 ZIP 一次性下载，避免逐一下载（PDF 拆分整本书产生几十个文件时尤其有用）。
+- **栅格化 PDF 图片防断裂**：`html2pdf.ts` 由"固定 A4 高度硬切"改为**智能分页**——计算切页线时主动避开 `img / table / tr` 的纵向边界，根治 Word/Excel/HTML→PDF 时图片被腰斩；渲染宿主加 `img{max-width:100%}` 与 `break-inside:avoid`。
+- **Excel→PDF 表格呈现重写**：原实现用 `sheet_to_html` 生成自动布局表格，列宽由浏览器决定，宽表常出现"列被拉伸/缩窄、行被撑高"。改为**按内容宽度 + 原表列宽(`!cols`)计算每列像素宽**，写入 `<colgroup>` 并配合 `table-layout:fixed`，列宽稳定且比例合理；新增表头底色加粗、隔行底纹、单元格内边距、长文本自动换行，并用 `rowspan/colspan` 还原合并单元格；仍走 html2canvas 栅格化以**保中文**（jsPDF 默认字体不支持 CJK）。
+- **结果区显示输出文件大小**：`showResult` 每个文件卡片追加 `formatSize(blob.size)`，直观看到压缩/转换后的体积变化。
+
+**仍待提升（M5 候选 / 更高成本）：**
+- 中文水印/页码字体嵌入（需嵌入 CJK 字体，体积较大）。
+- 栅格化转换（Office→PDF）文本不可选：需引入 LibreOffice headless 或服务端 API（超出纯前端范畴）。
+- 压缩对纯矢量 PDF 可能变大（栅格化本质）。
+- （已移除）PDF→Excel 工具：用户确认使用场景少，已于第四轮删除，工具总数由 16 回落到 15；其坐标聚类列宽算法可作为未来"扫描件表格识别"的参考。

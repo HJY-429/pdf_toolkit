@@ -18,7 +18,7 @@ const watermarkPdf: Tool = {
       key: 'opacity',
       label: '不透明度',
       type: 'select',
-      default: '0.2',
+      default: '0.25',
       options: [
         { label: '浅 (0.15)', value: '0.15' },
         { label: '中 (0.25)', value: '0.25' },
@@ -28,7 +28,8 @@ const watermarkPdf: Tool = {
   ],
   async run({ files, options }: ToolInput, ctx): Promise<ToolOutput> {
     const text = String(options.text || 'CONFIDENTIAL');
-    const opacity = Number(options.opacity ?? 0.2);
+    // 防御：当选项未被正确解析为空字符串时，回退到 0.25，避免不透明度变成 0 导致"看不见水印"
+    const opacity = Number(options.opacity) || 0.25;
     const bytes = await files[0].arrayBuffer();
     const doc = await PDFDocument.load(bytes);
     const font = await doc.embedFont(StandardFonts.Helvetica);

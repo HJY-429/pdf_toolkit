@@ -1,7 +1,7 @@
 import './style.css';
 import { registry } from '../tools';
 import type { Tool, ToolField, ToolOutput } from '../core/types';
-import { download, downloadAll } from '../core/io';
+import { download, downloadAll, downloadZip } from '../core/io';
 import { loadPdf, renderPage } from '../core/pdfjs';
 import { CATEGORIES, metaOf } from './tool-meta';
 
@@ -14,6 +14,7 @@ interface State {
 const state: State = { tool: null, files: [], running: false, resultUrls: [] };
 
 const MAX_FILE_MB = 50; // 单文件大小上限，超限给出友好提示并跳过
+const ZIP_THRESHOLD = 6; // 输出文件数超过该阈值时，改用 ZIP 打包下载避免逐一下载
 const thumbCache = new Map<string, string>(); // 缩略图缓存：key = name+size -> dataURL
 const THEME_KEY = 'pdfbox-theme';
 
@@ -503,15 +504,27 @@ function showResult(output: ToolOutput) {
     const url = URL.createObjectURL(f.blob);
     state.resultUrls.push(url);
     const a = el('a', { class: 'dl', href: url, download: f.name }, [`下载 ${f.name}`]);
-    box.appendChild(el('div', { class: 'item' }, [el('span', { class: 'fname' }, [`文件 ${i + 1} · ${f.name}`]), a]));
+    box.appendChild(
+      el('div', { class: 'item' }, [
+        el('span', { class: 'fname' }, [`文件 ${i + 1} · ${f.name} · ${formatSize(f.blob.size)}`]),
+        a,
+      ]),
+    );
   });
   if (output.length > 1) {
-    box.appendChild(
-      el('button', {
-        class: 'run-btn',
-        onclick: () => downloadAll(output.map((f) => ({ blob: f.blob, name: f.name }))),
-      }, ['全部下载']),
-    );
+    const useZip = output.length > ZIP_THRESHOLD;
+    const label = useZip ? `打包下载 ZIP（${output.length} 个文件）` : '全部下载';
+    const handler = useZip
+      ? () => downloadZip(output.map((f) => ({ blob: f.blob, name: f.name })), 'pdf-toolkit-output')
+      : () => downloadAll(output.map((f) => ({ blob: f.blob, name: f.name })));
+    const btn = el('button', { class: 'run-btn', onclick: handler }, [label]);
+    if (useZip) {
+      btn.addEventListener('click', () => {
+        btn.textContent = '打包中…';
+        btn.setAttribute('disabled', 'true');
+      });
+    }
+    box.appendChild(btn);
   }
 }
 
