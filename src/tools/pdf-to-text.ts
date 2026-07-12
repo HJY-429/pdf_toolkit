@@ -13,9 +13,13 @@ const pdfToText: Tool = {
   async run({ files, options }: ToolInput, ctx): Promise<ToolOutput> {
     const bytes = await files[0].arrayBuffer();
     const doc = await loadPdf(bytes);
-    const text = await extractText(doc, (r) => ctx?.onProgress?.(r));
-    const name = deriveName(files[0].name, 'text', 'txt');
-    return [{ blob: new Blob([text], { type: 'text/plain' }), name }];
+    try {
+      const text = await extractText(doc, (r) => ctx?.onProgress?.(r));
+      const name = deriveName(files[0].name, 'text', 'txt');
+      return [{ blob: new Blob([text], { type: 'text/plain' }), name }];
+    } finally {
+      doc.destroy().catch(() => {});
+    }
   },
 };
 

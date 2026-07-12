@@ -296,8 +296,13 @@ async function renderThumb(f: File): Promise<string> {
     try {
       const bytes = await f.arrayBuffer();
       const doc = await loadPdf(bytes);
-      const { canvas } = await renderPage(doc, 1, 0.25);
-      url = canvas.toDataURL('image/png');
+      try {
+        const { canvas } = await renderPage(doc, 1, 0.25);
+        url = canvas.toDataURL('image/png');
+      } finally {
+        // 及时释放 pdf.js 文档，避免多文件场景下 worker 资源耗尽导致后续加载失败
+        doc.destroy().catch(() => {});
+      }
     } catch {
       url = '';
     }
@@ -422,6 +427,7 @@ async function runTool() {
   const total = state.files.length;
   const allResults: ToolOutput = [];
   let failed = 0;
+  const errors: string[] = []; // 在 try 作用域声明，供下方统一汇报失败原因
 
   try {
     if (t.multiple) {
@@ -435,7 +441,6 @@ async function runTool() {
       );
       allResults.push(...output);
     } else {
-      const errors: string[] = [];
       for (let i = 0; i < total; i++) {
         try {
           const output = await executeTool(

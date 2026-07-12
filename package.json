@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.7.1",
     "docx": "^8.5.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",

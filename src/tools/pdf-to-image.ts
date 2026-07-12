@@ -27,17 +27,21 @@ const pdfToImage: Tool = {
     const scale = Number(options.scale ?? 1.5);
     const bytes = await files[0].arrayBuffer();
     const doc = await loadPdf(bytes);
-    const total = doc.numPages;
-    const result: ToolOutput = [];
-    const base = files[0].name;
+    try {
+      const total = doc.numPages;
+      const result: ToolOutput = [];
+      const base = files[0].name;
 
-    for (let i = 1; i <= total; i++) {
-      const { canvas } = await renderPage(doc, i, scale);
-      const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'));
-      result.push({ blob, name: deriveName(base, `page-${i}`, 'png') });
-      ctx?.onProgress?.(i / total, `导出第 ${i}/${total} 页`);
+      for (let i = 1; i <= total; i++) {
+        const { canvas } = await renderPage(doc, i, scale);
+        const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'));
+        result.push({ blob, name: deriveName(base, `page-${i}`, 'png') });
+        ctx?.onProgress?.(i / total, `导出第 ${i}/${total} 页`);
+      }
+      return result;
+    } finally {
+      doc.destroy().catch(() => {});
     }
-    return result;
   },
 };
 

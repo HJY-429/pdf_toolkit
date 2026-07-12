@@ -14,24 +14,28 @@ const pdfToWord: Tool = {
   async run({ files, options }: ToolInput, ctx): Promise<ToolOutput> {
     const bytes = await files[0].arrayBuffer();
     const doc = await loadPdf(bytes);
-    const { Document, Packer, Paragraph, TextRun } = await import('docx');
-    const total = doc.numPages;
-    const children: Paragraph[] = [];
+    try {
+      const { Document, Packer, Paragraph, TextRun } = await import('docx');
+      const total = doc.numPages;
+      const children: Paragraph[] = [];
 
-    for (let i = 1; i <= total; i++) {
-      ctx?.onProgress?.(i / total, `提取第 ${i}/${total} 页…`);
-      const text = await extractPageText(doc, i);
-      children.push(new Paragraph({ children: [new TextRun(text || ' ')] }));
-      if (i < total) {
-        // 插入空白分页段落，使下一页内容另起一页
-        children.push(new Paragraph({ children: [new TextRun('')], pageBreakBefore: true }));
+      for (let i = 1; i <= total; i++) {
+        ctx?.onProgress?.(i / total, `提取第 ${i}/${total} 页…`);
+        const text = await extractPageText(doc, i);
+        children.push(new Paragraph({ children: [new TextRun(text || ' ')] }));
+        if (i < total) {
+          // 插入空白分页段落，使下一页内容另起一页
+          children.push(new Paragraph({ children: [new TextRun('')], pageBreakBefore: true }));
+        }
       }
-    }
 
-    const docxDoc = new Document({ sections: [{ children }] });
-    const blob = await Packer.toBlob(docxDoc);
-    const name = deriveName(files[0].name, 'text', 'docx');
-    return [{ blob, name }];
+      const docxDoc = new Document({ sections: [{ children }] });
+      const blob = await Packer.toBlob(docxDoc);
+      const name = deriveName(files[0].name, 'text', 'docx');
+      return [{ blob, name }];
+    } finally {
+      doc.destroy().catch(() => {});
+    }
   },
 };
 

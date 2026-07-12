@@ -30,25 +30,29 @@ const compressPdf: Tool = {
     const scale = scaleMap[String(options.quality)] ?? 0.7;
     const bytes = await files[0].arrayBuffer();
     const src = await loadPdf(bytes);
-    const total = src.numPages;
-    const out = await PDFDocument.create();
+    try {
+      const total = src.numPages;
+      const out = await PDFDocument.create();
 
-    for (let i = 1; i <= total; i++) {
-      const page = await src.getPage(i);
-      const vp = page.getViewport({ scale: 1 });
-      const { canvas } = await renderPage(src, i, scale);
-      const jpgBlob = await new Promise<Blob>((res, rej) =>
-        canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob 失败'))), 'image/jpeg', 0.8),
-      );
-      const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
-      const img = await out.embedJpg(jpgBytes);
-      const p = out.addPage([vp.width, vp.height]);
-      p.drawImage(img, { x: 0, y: 0, width: vp.width, height: vp.height });
-      ctx?.onProgress?.(i / total, `压缩第 ${i}/${total} 页`);
+      for (let i = 1; i <= total; i++) {
+        const page = await src.getPage(i);
+        const vp = page.getViewport({ scale: 1 });
+        const { canvas } = await renderPage(src, i, scale);
+        const jpgBlob = await new Promise<Blob>((res, rej) =>
+          canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob 失败'))), 'image/jpeg', 0.8),
+        );
+        const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+        const img = await out.embedJpg(jpgBytes);
+        const p = out.addPage([vp.width, vp.height]);
+        p.drawImage(img, { x: 0, y: 0, width: vp.width, height: vp.height });
+        ctx?.onProgress?.(i / total, `压缩第 ${i}/${total} 页`);
+      }
+      const saved = await out.save();
+      const name = deriveName(files[0].name, 'compressed');
+      return [{ blob: new Blob([saved], { type: 'application/pdf' }), name }];
+    } finally {
+      src.destroy().catch(() => {});
     }
-    const saved = await out.save();
-    const name = deriveName(files[0].name, 'compressed');
-    return [{ blob: new Blob([saved], { type: 'application/pdf' }), name }];
   },
 };
 
