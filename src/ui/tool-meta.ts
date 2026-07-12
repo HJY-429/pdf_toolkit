@@ -30,6 +30,7 @@ export const TOOL_META: Record<string, { icon: string; category: string }> = {
   'pdf-to-text': { icon: '📝', category: 'convert' },
   'word-to-pdf': { icon: '📄', category: 'convert' },
   'excel-to-pdf': { icon: '📊', category: 'convert' },
+  'pdf-to-excel': { icon: '📈', category: 'convert' },
   'pdf-to-word': { icon: '📃', category: 'convert' },
   'html-to-pdf': { icon: '🌐', category: 'convert' },
 
