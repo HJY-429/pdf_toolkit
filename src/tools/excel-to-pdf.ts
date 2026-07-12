@@ -1,3 +1,4 @@
+import { PDFDocument } from 'pdf-lib';
 import type { Tool, ToolInput, ToolOutput } from '../core/types';
 import { registry } from '../core/registry';
 import { deriveName } from '../core/io';
@@ -33,7 +34,7 @@ const excelToPdf: Tool = {
     const { htmlToPdf, createRenderHost } = await import('../core/html2pdf');
     const XLSX = await import('xlsx');
     const buf = await files[0].arrayBuffer();
-    ctx?.onProgress?.(0.2, '解析 Excel…');
+    ctx?.onProgress?.(0.1, '解析 Excel…');
     const wb = XLSX.read(buf, { type: 'array' });
 
     // 渲染宿主（离屏）内容宽度（A4 比例 px 减去左右内边距）
@@ -41,7 +42,7 @@ const excelToPdf: Tool = {
     const budget = hostW - 64;
 
     const style = `
-      .sheet-title{font-size:18px;font-weight:700;margin:6px 0 10px;color:#1a1a1a;}
+      .sheet-title{font-size:18px;font-weight:700;margin:6px 0 10px;color:#1a1a1a;page-break-before:always;}
       table.xls{border-collapse:collapse;width:100%;table-layout:fixed;font-size:11px;color:#222;
         font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;}
       table.xls th,table.xls td{border:1px solid #b8b8b8;padding:5px 7px;vertical-align:top;
@@ -51,36 +52,43 @@ const excelToPdf: Tool = {
       table.xls.no-zebra tbody tr:nth-child(even) td{background:transparent;}
     `;
 
-    let html = `<style>${style}</style>`;
-    let sheets = 0;
-    wb.SheetNames.forEach((name) => {
+    // 逐工作表收集（空表跳过），用于后续「每表独立渲染 + 合并」，避免多表拼成一个巨型 canvas 导致卡死
+    const sheets: { name: string; html: string }[] = [];
+    for (const name of wb.SheetNames) {
       const ws = wb.Sheets[name];
-      // raw:false → 日期/数值按单元格格式转成字符串；defval 保证空单元格不丢列
       const aoa = XLSX.utils.sheet_to_json(ws, {
         header: 1,
         raw: false,
         defval: '',
       }) as (string | number)[][];
-      if (!aoa.length) return;
+      if (!aoa.length) continue;
       const merges = (ws['!merges'] || []) as { s: { r: number; c: number }; e: { r: number; c: number } }[];
       const colsInfo = (ws['!cols'] || []) as { wch?: number }[];
-      html += buildSheetHtml(name, aoa, merges, colsInfo, budget, zebra);
-      sheets++;
-    });
-
-    if (sheets === 0) throw new Error('工作簿中没有可读取的数据');
-
-    const host = createRenderHost(html, orientation);
-    try {
-      const blob = await htmlToPdf(host, {
-        orientation,
-        onProgress: (r, label) => ctx?.onProgress?.(0.2 + r * 0.8, label),
-      });
-      const name = deriveName(files[0].name, 'from-excel', 'pdf');
-      return [{ blob, name }];
-    } finally {
-      host.remove();
+      sheets.push({ name, html: `<style>${style}</style>` + buildSheetHtml(name, aoa, merges, colsInfo, budget, zebra) });
     }
+
+    if (sheets.length === 0) throw new Error('工作簿中没有可读取的数据');
+
+    // 每表独立渲染为 PDF（各自内存有界），再合并为单文件
+    const out = await PDFDocument.create();
+    for (let i = 0; i < sheets.length; i++) {
+      const host = createRenderHost(sheets[i].html, orientation);
+      try {
+        const blob = await htmlToPdf(host, {
+          orientation,
+          onProgress: (r, label) => ctx?.onProgress?.(0.15 + ((i + r) / sheets.length) * 0.8, label),
+        });
+        const sdoc = await PDFDocument.load(await blob.arrayBuffer());
+        const pages = await out.copyPages(sdoc, sdoc.getPageIndices());
+        pages.forEach((p) => out.addPage(p));
+      } finally {
+        host.remove();
+      }
+    }
+
+    const saved = await out.save();
+    const name = deriveName(files[0].name, 'from-excel', 'pdf');
+    return [{ blob: new Blob([saved], { type: 'application/pdf' }), name }];
   },
 };
 
